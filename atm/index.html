@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATM 自动柜员机</title>
+<style>
+/* ========== 全局重置 ========== */
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#1a1a2e;
+  display:flex;justify-content:center;align-items:center;
+  min-height:100vh;font-family:"Microsoft YaHei","PingFang SC",sans-serif;
+  overflow:hidden;
+}
+
+/* ========== ATM 外框 ========== */
+.atm-machine{
+  width:480px;height:720px;
+  background:linear-gradient(180deg,#d4d4d8 0%,#a1a1aa 100%);
+  border-radius:24px;
+  padding:18px;
+  box-shadow:
+    0 0 0 4px #71717a,
+    0 0 0 8px #52525b,
+    0 20px 60px rgba(0,0,0,.6),
+    inset 0 2px 4px rgba(255,255,255,.3);
+  position:relative;
+}
+
+/* 顶部品牌条 */
+.atm-brand{
+  background:linear-gradient(90deg,#b91c1c,#dc2626,#b91c1c);
+  color:#fff;
+  text-align:center;
+  padding:8px 0;
+  border-radius:12px 12px 0 0;
+  font-size:14px;
+  letter-spacing:4px;
+  font-weight:bold;
+  text-shadow:0 1px 2px rgba(0,0,0,.3);
+  border:2px solid #991b1b;
+}
+
+/* 屏幕区域 */
+.atm-screen{
+  width:100%;
+  height:460px;
+  background:#000;
+  border-radius:8px;
+  margin-top:8px;
+  position:relative;
+  overflow:hidden;
+  border:3px solid #3f3f46;
+  box-shadow:inset 0 0 20px rgba(0,0,0,.8);
+}
+
+/* 屏幕反光效果 */
+.atm-screen::after{
+  content:'';
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,transparent 50%);
+  pointer-events:none;z-index:999;
+}
+
+/* ========== 页面通用 ========== */
+.page{
+  display:none;
+  width:100%;height:100%;
+  position:absolute;top:0;left:0;
+  flex-direction:column;
+  color:#fff;
+}
+.page.active{display:flex}
+
+/* 顶部状态栏 */
+.status-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 14px;
+  background:linear-gradient(90deg,#1e3a5f,#0f2847);
+  font-size:11px;color:#94a3b8;
+  border-bottom:1px solid #1e3a5f;
+  min-height:24px;
+}
+.status-bar .bank-name{color:#60a5fa;font-weight:bold;font-size:12px}
+.status-bar .time{color:#cbd5e1}
+
+/* 屏幕内容区 */
+.screen-body{
+  flex:1;
+  display:flex;flex-direction:column;
+  padding:0;
+  position:relative;
+}
+
+/* ========== 插卡/等待页 ========== */
+.welcome-bg{
+  flex:1;
+  background:radial-gradient(ellipse at center,#0c4a6e 0%,#082f49 60%,#0f172a 100%);
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  text-align:center;
+  padding:20px;
+}
+.welcome-logo{
+  font-size:42px;font-weight:900;
+  color:#38bdf8;
+  text-shadow:0 0 20px rgba(56,189,248,.5),0 2px 4px rgba(0,0,0,.5);
+  letter-spacing:6px;
+  margin-bottom:6px;
+}
+.welcome-sub{
+  font-size:13px;color:#7dd3fc;
+  letter-spacing:2px;
+  margin-bottom:30px;
+}
+.welcome-en{
+  font-size:11px;color:#475569;
+  letter-spacing:1px;
+  margin-bottom:36px;
+}
+.card-slot-anim{
+  width:220px;height:70px;
+  border:2px dashed #334155;
+  border-radius:12px;
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  margin-bottom:20px;
+  background:rgba(15,23,42,.6);
+  animation:pulse-border 2s ease-in-out infinite;
+}
+.card-slot-anim .icon{font-size:28px;margin-bottom:4px}
+.card-slot-anim .txt{font-size:13px;color:#94a3b8}
+@keyframes pulse-border{
+  0%,100%{border-color:#334155}
+  50%{border-color:#38bdf8}
+}
+.welcome-hint{
+  font-size:12px;color:#64748b;
+  margin-top:8px;
+}
+.insert-btn{
+  margin-top:24px;
+  padding:10px 36px;
+  background:linear-gradient(180deg,#2563eb,#1d4ed8);
+  color:#fff;border:none;border-radius:8px;
+  font-size:15px;cursor:pointer;
+  letter-spacing:2px;
+  box-shadow:0 4px 12px rgba(37,99,235,.4),inset 0 1px 0 rgba(255,255,255,.2);
+  transition:all .2s;
+}
+.insert-btn:hover{background:linear-gradient(180deg,#3b82f6,#2563eb);transform:translateY(-1px)}
+.insert-btn:active{transform:translateY(1px)}
+
+/* 调试信息条 */
+.debug-bar{
+  background:#f59e0b;color:#000;
+  text-align:center;
+  padding:4px 0;
+  font-size:11px;
+  font-weight:bold;
+  letter-spacing:1px;
+}
+
+/* ========== PIN 输入页 ========== */
+.pin-body{
+  flex:1;
+  background:linear-gradient(180deg,#0f172a,#1e293b);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:20px;
+}
+.pin-title{
+  font-size:16px;color:#e2e8f0;
+  margin-bottom:8px;
+  letter-spacing:2px;
+}
+.pin-subtitle{
+  font-size:12px;color:#64748b;
+  margin-bottom:24px;
+}
+.pin-display{
+  display:flex;gap:12px;
+  margin-bottom:30px;
+}
+.pin-dot{
+  width:16px;height:16px;
+  border:2px solid #475569;
+  border-radius:50%;
+  background:transparent;
+  transition:all .2s;
+}
+.pin-dot.filled{
+  background:#38bdf8;
+  border-color:#38bdf8;
+  box-shadow:0 0 8px rgba(56,189,248,.6);
+}
+.pin-keypad{
+  display:grid;
+  grid-template-columns:repeat(3,64px);
+  gap:10px;
+}
+.pin-key{
+  width:64px;height:44px;
+  border:1px solid #334155;
+  border-radius:8px;
+  background:linear-gradient(180deg,#1e293b,#0f172a);
+  color:#e2e8f0;
+  font-size:18px;font-weight:bold;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+  user-select:none;
+}
+.pin-key:hover{background:linear-gradient(180deg,#334155,#1e293b);border-color:#475569}
+.pin-key:active{transform:scale(.95);background:#0f172a}
+.pin-key.action{font-size:13px;color:#94a3b8}
+.pin-key.confirm{color:#4ade80;border-color:#166534}
+.pin-key.cancel{color:#f87171;border-color:#7f1d1d}
+.pin-error{
+  color:#f87171;font-size:12px;
+  margin-top:12px;min-height:16px;
+  text-align:center;
+}
+
+/* ========== 主菜单页 ========== */
+.menu-body{
+  flex:1;
+  background:linear-gradient(180deg,#0f172a,#1e293b);
+  padding:16px 20px;
+  display:flex;flex-direction:column;
+}
+.menu-title{
+  font-size:15px;color:#38bdf8;
+  text-align:center;
+  margin-bottom:6px;
+  letter-spacing:2px;
+}
+.menu-sub{
+  font-size:11px;color:#64748b;
+  text-align:center;
+  margin-bottom:18px;
+}
+.menu-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  flex:1;
+  align-content:start;
+}
+.menu-btn{
+  padding:18px 12px;
+  border:2px solid #1e3a5f;
+  border-radius:12px;
+  background:linear-gradient(180deg,#0c2d48,#0a1929);
+  color:#e2e8f0;
+  font-size:15px;
+  cursor:pointer;
+  display:flex;flex-direction:column;
+  align-items:center;gap:6px;
+  transition:all .2s;
+  letter-spacing:1px;
+}
+.menu-btn:hover{
+  border-color:#38bdf8;
+  background:linear-gradient(180deg,#0e3a5f,#0c2540);
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(56,189,248,.2);
+}
+.menu-btn .ico{font-size:24px}
+.menu-btn .lbl{font-size:14px;font-weight:bold}
+.menu-btn.exit{border-color:#7f1d1d;color:#fca5a5}
+.menu-btn.exit:hover{border-color:#f87171;background:linear-gradient(180deg,#3b0a0a,#2a0808)}
+
+.menu-footer{
+  display:flex;justify-content:space-between;
+  padding:8px 4px 0;
+  font-size:11px;color:#475569;
+}
+
+/* ========== 通用内容页 ========== */
+.content-body{
+  flex:1;
+  background:linear-gradient(180deg,#0f172a,#1e293b);
+  padding:16px 20px;
+  display:flex;flex-direction:column;
+}
+.content-title{
+  font-size:16px;color:#38bdf8;
+  text-align:center;
+  margin-bottom:6px;
+  letter-spacing:2px;
+}
+.content-sub{
+  font-size:11px;color:#64748b;
+  text-align:center;
+  margin-bottom:16px;
+}
+
+/* 金额快捷选择 */
+.amount-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:14px;
+}
+.amount-btn{
+  padding:14px;
+  border:2px solid #1e3a5f;
+  border-radius:10px;
+  background:linear-gradient(180deg,#0c2d48,#0a1929);
+  color:#e2e8f0;
+  font-size:16px;font-weight:bold;
+  cursor:pointer;
+  text-align:center;
+  transition:all .2s;
+}
+.amount-btn:hover{border-color:#38bdf8;background:linear-gradient(180deg,#0e3a5f,#0c2540)}
+.amount-btn.other{border-color:#854d0e;color:#fde68a}
+
+/* 输入区域 */
+.input-area{
+  display:flex;flex-direction:column;
+  gap:8px;
+  margin-bottom:14px;
+}
+.input-label{
+  font-size:12px;color:#94a3b8;
+}
+.input-field{
+  background:#0a1929;
+  border:2px solid #1e3a5f;
+  border-radius:8px;
+  padding:10px 14px;
+  color:#38bdf8;
+  font-size:20px;font-weight:bold;
+  text-align:center;
+  letter-spacing:2px;
+  outline:none;
+}
+.input-field:focus{border-color:#38bdf8}
+
+/* 操作按钮行 */
+.action-row{
+  display:flex;gap:10px;
+  margin-top:auto;
+  padding-bottom:4px;
+}
+.btn-primary,.btn-secondary,.btn-danger{
+  flex:1;
+  padding:12px;
+  border-radius:10px;
+  font-size:15px;font-weight:bold;
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:all .2s;
+  border:2px solid;
+}
+.btn-primary{
+  background:linear-gradient(180deg,#16a34a,#15803d);
+  border-color:#166534;color:#fff;
+}
+.btn-primary:hover{background:linear-gradient(180deg,#22c55e,#16a34a)}
+.btn-secondary{
+  background:linear-gradient(180deg,#2563eb,#1d4ed8);
+  border-color:#1e40af;color:#fff;
+}
+.btn-secondary:hover{background:linear-gradient(180deg,#3b82f6,#2563eb)}
+.btn-danger{
+  background:linear-gradient(180deg,#dc2626,#b91c1c);
+  border-color:#7f1d1d;color:#fff;
+}
+.btn-danger:hover{background:linear-gradient(180deg,#ef4444,#dc2626)}
+
+/* ========== 数字键盘 ========== */
+.num-keypad{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+  margin-top:10px;
+}
+.num-key{
+  padding:10px;
+  border:1px solid #334155;
+  border-radius:8px;
+  background:linear-gradient(180deg,#1e293b,#0f172a);
+  color:#e2e8f0;
+  font-size:17px;font-weight:bold;
+  cursor:pointer;
+  text-align:center;
+  transition:all .15s;
+  user-select:none;
+}
+.num-key:hover{background:linear-gradient(180deg,#334155,#1e293b)}
+.num-key:active{transform:scale(.95)}
+.num-key.wide{grid-column:span 2}
+.num-key.confirm{color:#4ade80;border-color:#166534}
+.num-key.clear{color:#f87171;border-color:#7f1d1d}
+
+/* ========== 余额显示 ========== */
+.balance-display{
+  flex:1;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;
+}
+.balance-label{
+  font-size:14px;color:#64748b;
+  margin-bottom:8px;
+}
+.balance-amount{
+  font-size:42px;font-weight:900;
+  color:#4ade80;
+  text-shadow:0 0 20px rgba(74,222,128,.3);
+  letter-spacing:2px;
+}
+.balance-account{
+  font-size:12px;color:#475569;
+  margin-top:12px;
+}
+.balance-note{
+  font-size:11px;color:#334155;
+  margin-top:20px;
+}
+
+/* ========== 提示/结果页 ========== */
+.result-body{
+  flex:1;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;
+  padding:30px;
+  background:linear-gradient(180deg,#0f172a,#1e293b);
+}
+.result-icon{
+  font-size:56px;
+  margin-bottom:16px;
+}
+.result-title{
+  font-size:20px;font-weight:bold;
+  color:#e2e8f0;
+  margin-bottom:8px;
+  letter-spacing:2px;
+}
+.result-msg{
+  font-size:13px;
+  color:#94a3b8;
+  line-height:1.8;
+}
+.result-detail{
+  font-size:14px;
+  color:#38bdf8;
+  margin:12px 0;
+  font-weight:bold;
+}
+.result-amount{
+  font-size:32px;font-weight:900;
+  color:#4ade80;
+  margin:8px 0 16px;
+}
+.processing-anim{
+  display:flex;gap:6px;
+  margin:20px 0;
+}
+.processing-anim span{
+  width:10px;height:10px;
+  background:#38bdf8;
+  border-radius:50%;
+  animation:bounce 1.4s ease-in-out infinite;
+}
+.processing-anim span:nth-child(2){animation-delay:.2s}
+.processing-anim span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{
+  0%,80%,100%{transform:scale(.6);opacity:.4}
+  40%{transform:scale(1);opacity:1}
+}
+
+/* ========== 退卡页 ========== */
+.card-return{
+  flex:1;
+  background:linear-gradient(180deg,#0f172a,#1e293b);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;
+  padding:20px;
+}
+.card-return-icon{
+  font-size:64px;
+  margin-bottom:16px;
+  animation:card-pop 1s ease-out;
+}
+@keyframes card-pop{
+  0%{transform:translateY(20px);opacity:0}
+  100%{transform:translateY(0);opacity:1}
+}
+.card-return-title{
+  font-size:18px;color:#e2e8f0;
+  margin-bottom:8px;
+}
+.card-return-msg{
+  font-size:13px;color:#94a3b8;
+  line-height:1.8;
+}
+.card-return-hint{
+  margin-top:24px;
+  padding:10px 20px;
+  border:2px dashed #f59e0b;
+  border-radius:10px;
+  color:#fbbf24;
+  font-size:13px;
+  animation:pulse-hint 1.5s ease-in-out infinite;
+}
+@keyframes pulse-hint{
+  0%,100%{opacity:1}
+  50%{opacity:.6}
+}
+
+/* ========== 底部提示条 ========== */
+.bottom-bar{
+  background:linear-gradient(90deg,#1e3a5f,#0f2847);
+  padding:5px 14px;
+  font-size:10px;
+  color:#475569;
+  text-align:center;
+  border-top:1px solid #1e3a5f;
+  min-height:20px;
+}
+
+/* ========== 侧边物理按钮（装饰） ========== */
+.side-buttons{
+  position:absolute;
+  right:-28px;top:50%;
+  transform:translateY(-50%);
+  display:flex;flex-direction:column;
+  gap:30px;
+}
+.side-btn{
+  width:20px;height:20px;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#52525b,#27272a);
+  border:2px solid #18181b;
+  box-shadow:0 2px 4px rgba(0,0,0,.5);
+}
+
+/* ========== 凭条打印区 ========== */
+.receipt-area{
+  margin-top:14px;
+  padding:12px;
+  background:#f8fafc;
+  color:#0f172a;
+  border-radius:6px;
+  font-family:"Courier New",monospace;
+  font-size:11px;
+  line-height:1.6;
+  text-align:left;
+  display:none;
+}
+.receipt-area.show{display:block}
+.receipt-area .r-title{font-weight:bold;text-align:center;margin-bottom:6px;border-bottom:1px dashed #94a3b8;padding-bottom:4px}
+.receipt-area .r-row{display:flex;justify-content:space-between}
+
+/* ========== 插卡动画页 ========== */
+.card-insert-anim{
+  flex:1;
+  background:radial-gradient(ellipse at center,#0c4a6e 0%,#082f49 60%,#0f172a 100%);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.card-visual{
+  width:240px;height:150px;
+  background:linear-gradient(135deg,#1e40af,#3b82f6,#1e40af);
+  border-radius:16px;
+  padding:16px;
+  position:relative;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  animation:card-insert 2s ease-in-out forwards;
+  margin-bottom:30px;
+}
+@keyframes card-insert{
+  0%{transform:translateY(-40px) scale(1.1);opacity:0}
+  40%{transform:translateY(0) scale(1);opacity:1}
+  70%{transform:translateY(0) scale(1);opacity:1}
+  100%{transform:translateY(60px) scale(.9);opacity:0}
+}
+.card-chip{
+  width:36px;height:28px;
+  background:linear-gradient(135deg,#fbbf24,#f59e0b);
+  border-radius:4px;
+  margin-bottom:16px;
+}
+.card-num{
+  font-size:14px;color:#fff;
+  letter-spacing:2px;
+  font-family:"Courier New",monospace;
+}
+.card-name{
+  font-size:10px;color:#bfdbfe;
+  margin-top:8px;
+}
+.card-brand{
+  position:absolute;bottom:12px;right:14px;
+  font-size:16px;font-weight:bold;color:#bfdbfe;
+  font-style:italic;
+}
+.reading-text{
+  font-size:14px;color:#38bdf8;
+  letter-spacing:2px;
+}
+.reading-sub{
+  font-size:11px;color:#475569;
+  margin-top:6px;
+}
+
+/* 账户选择 */
+.account-list{
+  display:flex;flex-direction:column;
+  gap:10px;
+  width:100%;
+}
+.account-item{
+  padding:14px 16px;
+  border:2px solid #1e3a5f;
+  border-radius:10px;
+  background:linear-gradient(180deg,#0c2d48,#0a1929);
+  color:#e2e8f0;
+  font-size:15px;
+  cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;
+  transition:all .2s;
+}
+.account-item:hover{border-color:#38bdf8;background:linear-gradient(180deg,#0e3a5f,#0c2540)}
+.account-item .acc-num{font-size:12px;color:#64748b}
+
+/* 吞卡警告 */
+.lock-warning{
+  border:2px solid #dc2626;
+  border-radius:12px;
+  padding:20px;
+  background:rgba(220,38,38,.1);
+  margin-bottom:16px;
+}
+.lock-warning .lw-icon{font-size:40px;margin-bottom:8px}
+.lock-warning .lw-title{font-size:16px;color:#f87171;font-weight:bold;margin-bottom:6px}
+.lock-warning .lw-msg{font-size:12px;color:#94a3b8;line-height:1.6}
+
+/* 小字提示 */
+.tiny-hint{font-size:10px;color:#334155;margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="atm-machine">
+  <!-- 品牌条 -->
+  <div class="atm-brand">◆ 中 国 建 设 银 行 ◆</div>
+
+  <!-- 调试条 -->
+  <div class="debug-bar" id="debugBar">⚠ 调试模式：<span id="debugCountdown">5</span> 秒后自动插卡 →</div>
+
+  <!-- 屏幕 -->
+  <div class="atm-screen">
+
+    <!-- ==================== 第1页：等待/插卡页 ==================== -->
+    <div class="page active" id="pageWelcome">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time1">--:--</span>
+      </div>
+      <div class="welcome-bg">
+        <div class="welcome-logo">CCB</div>
+        <div class="welcome-sub">自动柜员机 ATM</div>
+        <div class="welcome-en">CHINA CONSTRUCTION BANK</div>
+        <div class="card-slot-anim">
+          <div class="icon">💳</div>
+          <div class="txt">请插入银行卡</div>
+        </div>
+        <div class="welcome-hint">Please Insert Your Card</div>
+        <button class="insert-btn" onclick="insertCard()">插 卡</button>
+      </div>
+      <div class="bottom-bar">本机受理各类银联卡 | 24小时服务</div>
+    </div>
+
+    <!-- ==================== 第2页：插卡动画页 ==================== -->
+    <div class="page" id="pageInsertAnim">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time2">--:--</span>
+      </div>
+      <div class="card-insert-anim">
+        <div class="card-visual">
+          <div class="card-chip"></div>
+          <div class="card-num">**** **** **** 8821</div>
+          <div class="card-name">ZHANG SAN</div>
+          <div class="card-brand">VISA</div>
+        </div>
+        <div class="reading-text">正在读取卡片信息...</div>
+        <div class="reading-sub">Reading Card Information...</div>
+      </div>
+      <div class="bottom-bar">请勿拔卡，正在验证...</div>
+    </div>
+
+    <!-- ==================== 第3页：PIN 密码输入页 ==================== -->
+    <div class="page" id="pagePin">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time3">--:--</span>
+      </div>
+      <div class="pin-body">
+        <div class="pin-title">请输入您的密码</div>
+        <div class="pin-subtitle">Please Enter Your PIN</div>
+        <div class="pin-display" id="pinDots">
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+        </div>
+        <div class="pin-keypad" id="pinKeypad">
+          <div class="pin-key" onclick="pinInput('1')">1</div>
+          <div class="pin-key" onclick="pinInput('2')">2</div>
+          <div class="pin-key" onclick="pinInput('3')">3</div>
+          <div class="pin-key" onclick="pinInput('4')">4</div>
+          <div class="pin-key" onclick="pinInput('5')">5</div>
+          <div class="pin-key" onclick="pinInput('6')">6</div>
+          <div class="pin-key" onclick="pinInput('7')">7</div>
+          <div class="pin-key" onclick="pinInput('8')">8</div>
+          <div class="pin-key" onclick="pinInput('9')">9</div>
+          <div class="pin-key cancel" onclick="pinClear()">清除</div>
+          <div class="pin-key" onclick="pinInput('0')">0</div>
+          <div class="pin-key confirm" onclick="pinConfirm()">确认</div>
+        </div>
+        <div class="pin-error" id="pinError"></div>
+      </div>
+      <div class="bottom-bar">提示：密码为6位数字 | 连续3次错误将锁定卡片</div>
+    </div>
+
+    <!-- ==================== 第4页：账户选择页 ==================== -->
+    <div class="page" id="pageAccount">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time4">--:--</span>
+      </div>
+      <div class="content-body">
+        <div class="content-title">请选择账户</div>
+        <div class="content-sub">Please Select Account</div>
+        <div class="account-list">
+          <div class="account-item" onclick="selectAccount('储蓄账户')">
+            <span>💰 储蓄账户</span>
+            <span class="acc-num">****8821</span>
+          </div>
+          <div class="account-item" onclick="selectAccount('信用账户')">
+            <span>💳 信用账户</span>
+            <span class="acc-num">****8821</span>
+          </div>
+        </div>
+        <div class="action-row" style="margin-top:16px">
+          <button class="btn-danger" onclick="goBack('pageMenu')">返回</button>
+        </div>
+      </div>
+      <div class="bottom-bar">请选择您要操作的账户类型</div>
+    </div>
+
+    <!-- ==================== 第5页：主菜单页 ==================== -->
+    <div class="page" id="pageMenu">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time5">--:--</span>
+      </div>
+      <div class="menu-body">
+        <div class="menu-title">请选择服务项目</div>
+        <div class="menu-sub">Please Select Service</div>
+        <div class="menu-grid">
+          <div class="menu-btn" onclick="goPage('pageBalance')">
+            <div class="ico">💰</div>
+            <div class="lbl">查询余额</div>
+          </div>
+          <div class="menu-btn" onclick="goPage('pageWithdraw')">
+            <div class="ico">💵</div>
+            <div class="lbl">取款</div>
+          </div>
+          <div class="menu-btn" onclick="goPage('pageDeposit')">
+            <div class="ico">📥</div>
+            <div class="lbl">存款</div>
+          </div>
+          <div class="menu-btn" onclick="goPage('pageTransfer')">
+            <div class="ico">🔄</div>
+            <div class="lbl">转账</div>
+          </div>
+          <div class="menu-btn" onclick="goPage('pageChangePin')">
+            <div class="ico">🔑</div>
+            <div class="lbl">修改密码</div>
+          </div>
+          <div class="menu-btn" onclick="goPage('pagePrintReceipt')">
+            <div class="ico">🧾</div>
+            <div class="lbl">打印凭条</div>
+          </div>
+        </div>
+        <div class="menu-footer">
+          <span>侧键 F1~F4 对应屏幕选项</span>
+          <span onclick="goPage('pageExit')" style="color:#f87171;cursor:pointer">[退卡 Exit]</span>
+        </div>
+      </div>
+      <div class="bottom-bar">交易安全提示：请注意遮挡密码键盘</div>
+    </div>
+
+    <!-- ==================== 第6页：查询余额页 ==================== -->
+    <div class="page" id="pageBalance">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time6">--:--</span>
+      </div>
+      <div class="content-body">
+        <div class="content-title">余额查询</div>
+        <div class="content-sub">Balance Inquiry</div>
+        <div class="balance-display">
+          <div class="balance-label">当前账户余额</div>
+          <div class="balance-amount" id="balanceAmount">¥ 12,580.36</div>
+          <div class="balance-account">储蓄账户 ****8821</div>
+          <div class="balance-note">数据更新时间：<span id="balanceTime">--:--:--</span></div>
+        </div>
+        <div class="action-row">
+          <button class="btn-primary" onclick="goPage('pageMenu')">返回主菜单</button>
+          <button class="btn-secondary" onclick="goPage('pagePrintReceipt')">打印凭条</button>
+        </div>
+      </div>
+      <div class="bottom-bar">本查询结果仅供参考，以银行实际记录为准</div>
+    </div>
+
+    <!-- ==================== 第7页：取款页 ==================== -->
+    <div class="page" id="pageWithdraw">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time7">--:--</span>
+      </div>
+      <div class="content-body">
+        <div class="content-title">取 款</div>
+        <div class="content-sub">Cash Withdrawal</div>
+        <div class="amount-grid">
+          <div class="amount-btn" onclick="quickWithdraw(100)">¥100</div>
+          <div class="amount-btn" onclick="quickWithdraw(500)">¥500</div>
+          <div class="amount-btn" onclick="quickWithdraw(1000)">¥1,000</div>
+          <div class="amount-btn" onclick="quickWithdraw(2000)">¥2,000</div>
+          <div class="amount-btn" onclick="quickWithdraw(3000)">¥3,000</div>
+          <div class="amount-btn other" onclick="showCustomAmount()">其他金额</div>
+        </div>
+        <div class="input-area" id="customAmountArea" style="display:none">
+          <div class="input-label">请输入取款金额（需为100的倍数）</div>
+          <input class="input-field" id="customAmountInput" type="text" placeholder="0" maxlength="6" style="color:#38bdf8;background:#0a1929;border:2px solid #1e3a5f;border-radius:8px;padding:10px 14px;font-size:20px;font-weight:bold;text-align:center;letter-spacing:2px;outline:none">
+          <div class="num-keypad" id="amountKeypad">
+            <div class="num-key" onclick="numInput('1')">1</div>
+            <div class="num-key" onclick="numInput('2')">2</div>
+            <div class="num-key" onclick="numInput('3')">3</div>
+            <div class="num-key" onclick="numInput('4')">4</div>
+            <div class="num-key" onclick="numInput('5')">5</div>
+            <div class="num-key" onclick="numInput('6')">6</div>
+            <div class="num-key" onclick="numInput('7')">7</div>
+            <div class="num-key" onclick="numInput('8')">8</div>
+            <div class="num-key" onclick="numInput('9')">9</div>
+            <div class="num-key clear" onclick="numClear()">清除</div>
+            <div class="num-key" onclick="numInput('0')">0</div>
+            <div class="num-key confirm" onclick="customWithdraw()">确认</div>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn-danger" onclick="goPage('pageMenu')">返回</button>
+        </div>
+        <div class="tiny-hint">单笔取款上限 ¥5,000 | 日累计限额 ¥20,000</div>
+      </div>
+      <div class="bottom-bar">温馨提示：取款后请清点现金并妥善保管</div>
+    </div>
+
+    <!-- ==================== 第8页：存款页 ==================== -->
+    <div class="page" id="pageDeposit">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time8">--:--</span>
+      </div>
+      <div class="content-body">
+        <div class="content-title">存 款</div>
+        <div class="content-sub">Cash Deposit</div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px">
+          <div style="font-size:48px;margin-bottom:16px">📥</div>
+          <div style="font-size:15px;color:#e2e8f0;margin-bottom:8px">请将现金整齐放入存款口</div>
+          <div style="font-size:12px;color:#64748b;line-height:1.8;margin-bottom:20px">
+            本机仅受理面额 100 元的人民币纸币<br>
+            单次存款上限：200 张（¥20,000）<br>
+            请勿放入折叠、破损或异物
+          </div>
+          <div class="input-area" style="width:100%;max-width:260px">
+            <div class="input-label">存款金额</div>
+            <input class="input-field" id="depositAmount" type="text" placeholder="请输入金额" maxlength="5" style="color:#38bdf8;background:#0a1929;border:2px solid #1e3a5f;border-radius:8px;padding:10px 14px;font-size:20px;font-weight:bold;text-align:center;letter-spacing:2px;outline:none">
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn-danger" onclick="goPage('pageMenu')">返回</button>
+          <button class="btn-primary" onclick="doDeposit()">确认存款</button>
+        </div>
+      </div>
+      <div class="bottom-bar">存款口位于屏幕右侧下方</div>
+    </div>
+
+    <!-- ==================== 第9页：转账页 ==================== -->
+    <div class="page" id="pageTransfer">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time9">--:--</span>
+      </div>
+      <div class="content-body">
+        <div class="content-title">转 账</div>
+        <div class="content-sub">Fund Transfer</div>
+        <div class="input-area">
+          <div class="input-label">转入账号</div>
+          <input class="input-field" id="transferAcc" type="text" placeholder="请输入收款人账号" maxlength="19" style="color:#38bdf8;background:#0a1929;border:2px solid #1e3a5f;border-radius:8px;padding:10px 14px;font-size:16px;font-weight:bold;text-align:center;letter-spacing:1px;outline:none">
+          <div class="input-label" style="margin-top:10px">收款人姓名</div>
+          <input class="input-field" id="transferName" type="text" placeholder="请输入收款人姓名" maxlength="10" style="color:#38bdf8;background:#0a1929;border:2px solid #1e3a5f;border-radius:8px;padding:10px 14px;font-size:16px;font-weight:bold;text-align:center;letter-spacing:1px;outline:none">
+          <div class="input-label" style="margin-top:10px">转账金额</div>
+          <input class="input-field" id="transferAmt" type="text" placeholder="0.00" maxlength="8" style="color:#38bdf8;background:#0a1929;border:2px solid #1e3a5f;border-radius:8px;padding:10px 14px;font-size:20px;font-weight:bold;text-align:center;letter-spacing:2px;outline:none">
+        </div>
+        <div class="action-row">
+          <button class="btn-danger" onclick="goPage('pageMenu')">返回</button>
+          <button class="btn-primary" onclick="doTransfer()">确认转账</button>
+        </div>
+        <div class="tiny-hint">跨行转账手续费：¥2.00/笔 | 日累计限额 ¥50,000</div>
+      </div>
+      <div class="bottom-bar">请仔细核对收款人信息，转账成功后不可撤销</div>
+    </div>
+
+    <!-- ==================== 第10页：修改密码页 ==================== -->
+    <div class="page" id="pageChangePin">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time10">--:--</span>
+      </div>
+      <div class="content-body">
+        <div class="content-title">修改密码</div>
+        <div class="content-sub">Change PIN</div>
+        <div class="input-area">
+          <div class="input-label">请输入原密码</div>
+          <input class="input-field" id="oldPin" type="password" placeholder="******" maxlength="6" style="color:#38bdf8;background:#0a1929;border:2px solid #1e3a5f;border-radius:8px;padding:10px 14px;font-size:20px;font-weight:bold;text-align:center;letter-spacing:4px;outline:none">
+          <div class="input-label" style="margin-top:10px">请输入新密码</div>
+          <input class="input-field" id="newPin" type="password" placeholder="******" maxlength="6" style="color:#38bdf8;background:#0a1929;border:2px solid #1e3a5f;border-radius:8px;padding:10px 14px;font-size:20px;font-weight:bold;text-align:center;letter-spacing:4px;outline:none">
+          <div class="input-label" style="margin-top:10px">请再次输入新密码</div>
+          <input class="input-field" id="newPin2" type="password" placeholder="******" maxlength="6" style="color:#38bdf8;background:#0a1929;border:2px solid #1e3a5f;border-radius:8px;padding:10px 14px;font-size:20px;font-weight:bold;text-align:center;letter-spacing:4px;outline:none">
+        </div>
+        <div class="action-row">
+          <button class="btn-danger" onclick="goPage('pageMenu')">返回</button>
+          <button class="btn-primary" onclick="doChangePin()">确认修改</button>
+        </div>
+        <div class="tiny-hint">密码须为6位数字，请勿使用生日、连续或重复数字</div>
+      </div>
+      <div class="bottom-bar">密码修改后请牢记新密码</div>
+    </div>
+
+    <!-- ==================== 第11页：打印凭条页 ==================== -->
+    <div class="page" id="pagePrintReceipt">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time11">--:--</span>
+      </div>
+      <div class="content-body">
+        <div class="content-title">打印凭条</div>
+        <div class="content-sub">Print Receipt</div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-size:42px;margin-bottom:14px">🧾</div>
+          <div style="font-size:14px;color:#e2e8f0;margin-bottom:16px">是否打印本次交易凭条？</div>
+          <div class="receipt-area" id="receiptContent">
+            <div class="r-title">中国建设银行交易凭条</div>
+            <div class="r-row"><span>交易类型</span><span id="rType">取款</span></div>
+            <div class="r-row"><span>交易账号</span><span>****8821</span></div>
+            <div class="r-row"><span>交易金额</span><span id="rAmt">¥ 0.00</span></div>
+            <div class="r-row"><span>交易时间</span><span id="rTime">--:--:--</span></div>
+            <div class="r-row"><span>交易渠道</span><span>ATM</span></div>
+            <div class="r-row"><span>终端编号</span><span>CCB-310482</span></div>
+            <div style="border-top:1px dashed #94a3b8;margin-top:6px;padding-top:4px;text-align:center;color:#64748b">请妥善保管本凭条</div>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn-danger" onclick="goPage('pageMenu')">不需要</button>
+          <button class="btn-primary" onclick="printReceipt()">确认打印</button>
+        </div>
+      </div>
+      <div class="bottom-bar">凭条出口位于屏幕下方</div>
+    </div>
+
+    <!-- ==================== 第12页：处理中页 ==================== -->
+    <div class="page" id="pageProcessing">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time12">--:--</span>
+      </div>
+      <div class="result-body">
+        <div class="processing-anim">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="result-title" id="procTitle">正在处理...</div>
+        <div class="result-msg" id="procMsg">Please Wait<br>正在与银行主机通讯，请勿离开</div>
+      </div>
+      <div class="bottom-bar">通讯中，请稍候...</div>
+    </div>
+
+    <!-- ==================== 第13页：交易结果页 ==================== -->
+    <div class="page" id="pageResult">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time13">--:--</span>
+      </div>
+      <div class="result-body">
+        <div class="result-icon" id="resultIcon">✅</div>
+        <div class="result-title" id="resultTitle">交易成功</div>
+        <div class="result-detail" id="resultDetail"></div>
+        <div class="result-amount" id="resultAmount"></div>
+        <div class="result-msg" id="resultMsg"></div>
+      </div>
+      <div class="bottom-bar" id="resultBottom">请选择下一步操作</div>
+    </div>
+
+    <!-- ==================== 第14页：退卡页 ==================== -->
+    <div class="page" id="pageExit">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time14">--:--</span>
+      </div>
+      <div class="card-return">
+        <div class="card-return-icon">💳</div>
+        <div class="card-return-title">请取回您的银行卡</div>
+        <div class="card-return-msg">
+          感谢您使用中国建设银行ATM<br>
+          请注意保管好您的卡片及交易凭条<br>
+          欢迎再次光临
+        </div>
+        <div class="card-return-hint">⚠ 请及时取卡，超时将自动吞卡</div>
+      </div>
+      <div class="bottom-bar">请拔出您的银行卡 →</div>
+    </div>
+
+    <!-- ==================== 第15页：吞卡警告页 ==================== -->
+    <div class="page" id="pageLocked">
+      <div class="status-bar">
+        <span class="bank-name">中国建设银行</span>
+        <span class="time" id="time15">--:--</span>
+      </div>
+      <div class="content-body" style="justify-content:center;align-items:center">
+        <div class="lock-warning">
+          <div class="lw-icon">🔒</div>
+          <div class="lw-title">卡片已被锁定</div>
+          <div class="lw-msg">
+            您已连续3次输入错误密码<br>
+            为保障资金安全，本卡已被暂时锁定<br><br>
+            请携带本人有效身份证件<br>
+            前往就近网点办理解锁手续
+          </div>
+        </div>
+        <div style="font-size:12px;color:#475569;margin-top:16px;text-align:center;line-height:1.8">
+          客服热线：95533<br>
+          24小时为您服务
+        </div>
+      </div>
+      <div class="bottom-bar">卡片已回收，请联系银行处理</div>
+    </div>
+
+  </div><!-- /atm-screen -->
+
+  <!-- 侧边装饰按钮 -->
+  <div class="side-buttons">
+    <div class="side-btn"></div>
+    <div class="side-btn"></div>
+    <div class="side-btn"></div>
+    <div class="side-btn"></div>
+  </div>
+</div><!-- /atm-machine -->
+
+<script>
+/* ========== 全局状态 ========== */
+var STATE = {
+  cardInserted:false,
+  pinVerified:false,
+  pinAttempts:0,
+  balance:12580.36,
+  currentAccount:'储蓄账户',
+  lastTransaction:{type:'',amount:0}
+};
+
+var CORRECT_PIN = '123456'; // 默认密码
+
+/* ========== 工具函数 ========== */
+function $(id){return document.getElementById(id)}
+function goPage(pageId){
+  var pages=document.querySelectorAll('.page');
+  for(var i=0;i<pages.length;i++) pages[i].classList.remove('active');
+  $(pageId).classList.add('active');
+  updateTime();
+}
+function updateTime(){
+  var now=new Date();
+  var h=String(now.getHours()).padStart(2,'0');
+  var m=String(now.getMinutes()).padStart(2,'0');
+  var s=String(now.getSeconds()).padStart(2,'0');
+  var t=h+':'+m,ts=h+':'+m+':'+s;
+  // 更新所有时间显示
+  var ids=['time1','time2','time3','time4','time5','time6','time7','time8','time9','time10','time11','time12','time13','time14','time15'];
+  for(var i=0;i<ids.length;i++){
+    var el=$(ids[i]);
+    if(el){
+      if(ids[i]==='time6'||ids[i]==='time13') el.textContent=ts;
+      else el.textContent=t;
+    }
+  }
+  $('balanceTime').textContent=ts;
+}
+setInterval(updateTime,1000);
+updateTime();
+
+/* ========== 插卡流程 ========== */
+function insertCard(){
+  STATE.cardInserted=true;
+  $('debugBar').style.display='none';
+  goPage('pageInsertAnim');
+  // 2秒后跳转PIN输入
+  setTimeout(function(){goPage('pagePin')},2200);
+}
+
+/* ========== 调试自动插卡 ========== */
+var dbgSec=5;
+var dbgTimer=setInterval(function(){
+  dbgSec--;
+  $('debugCountdown').textContent=dbgSec;
+  if(dbgSec<=0){
+    clearInterval(dbgTimer);
+    if(!STATE.cardInserted) insertCard();
+  }
+},1000);
+
+/* ========== PIN 输入 ========== */
+var pinBuffer='';
+function pinInput(ch){
+  if(pinBuffer.length>=6) return;
+  pinBuffer+=ch;
+  renderPinDots();
+}
+function pinClear(){
+  pinBuffer='';
+  renderPinDots();
+  $('pinError').textContent='';
+}
+function renderPinDots(){
+  var dots=$('pinDots').querySelectorAll('.pin-dot');
+  for(var i=0;i<dots.length;i++){
+    dots[i].classList.toggle('filled',i<pinBuffer.length);
+  }
+}
+function pinConfirm(){
+  if(pinBuffer.length!==6){$('pinError').textContent='请输入6位密码';return}
+  if(pinBuffer===CORRECT_PIN){
+    STATE.pinVerified=true;
+    STATE.pinAttempts=0;
+    $('pinError').textContent='';
+    goPage('pageAccount');
+  }else{
+    STATE.pinAttempts++;
+    var remain=3-STATE.pinAttempts;
+    if(remain<=0){
+      goPage('pageLocked');
+    }else{
+      $('pinError').textContent='密码错误，剩余 '+remain+' 次机会';
+      pinBuffer='';
+      renderPinDots();
+    }
+  }
+}
+
+/* ========== 账户选择 ========== */
+function selectAccount(name){
+  STATE.currentAccount=name;
+  goPage('pageMenu');
+}
+
+/* ========== 取款 ========== */
+function quickWithdraw(amt){
+  if(amt>STATE.balance){showResult('❌','余额不足','余额不足','当前余额 ¥'+fmt(STATE.balance),false);return}
+  processTransaction('取款',amt,function(){
+    STATE.balance-=amt;
+    STATE.lastTransaction={type:'取款',amount:amt};
+    showResult('✅','取款成功','','请取走您的现金 ¥'+fmt(amt),true,amt);
+  });
+}
+function showCustomAmount(){
+  $('customAmountArea').style.display='block';
+  $('customAmountInput').focus();
+}
+function numInput(ch){
+  var inp=$('customAmountInput');
+  if(inp.value.length<6) inp.value+=ch;
+}
+function numClear(){
+  $('customAmountInput').value='';
+}
+function customWithdraw(){
+  var v=parseInt($('customAmountInput').value,10);
+  if(!v||v<=0){alert('请输入有效金额');return}
+  if(v%100!==0){alert('取款金额须为100的倍数');return}
+  if(v>STATE.balance){showResult('❌','余额不足','余额不足','当前余额 ¥'+fmt(STATE.balance),false);return}
+  processTransaction('取款',v,function(){
+    STATE.balance-=v;
+    STATE.lastTransaction={type:'取款',amount:v};
+    showResult('✅','取款成功','','请取走您的现金 ¥'+fmt(v),true,v);
+  });
+}
+
+/* ========== 存款 ========== */
+function doDeposit(){
+  var v=parseInt($('depositAmount').value,10);
+  if(!v||v<=0){alert('请输入有效金额');return}
+  if(v%100!==0){alert('存款金额须为100的倍数');return}
+  if(v>20000){alert('单次存款上限 ¥20,000');return}
+  processTransaction('存款',v,function(){
+    STATE.balance+=v;
+    STATE.lastTransaction={type:'存款',amount:v};
+    showResult('✅','存款成功','','已存入 ¥'+fmt(v),true,v);
+    $('depositAmount').value='';
+  });
+}
+
+/* ========== 转账 ========== */
+function doTransfer(){
+  var acc=$('transferAcc').value.trim();
+  var name=$('transferName').value.trim();
+  var amt=parseFloat($('transferAmt').value);
+  if(acc.length<10){alert('请输入正确的收款账号');return}
+  if(!name){alert('请输入收款人姓名');return}
+  if(!amt||amt<=0){alert('请输入有效金额');return}
+  if(amt>STATE.balance){showResult('❌','余额不足','余额不足','当前余额 ¥'+fmt(STATE.balance),false);return}
+  processTransaction('转账',amt,function(){
+    STATE.balance-=amt;
+    STATE.lastTransaction={type:'转账',amount:amt};
+    showResult('✅','转账成功','收款人：'+name,'已转出 ¥'+fmt(amt),true,amt);
+    $('transferAcc').value='';$('transferName').value='';$('transferAmt').value='';
+  });
+}
+
+/* ========== 修改密码 ========== */
+function doChangePin(){
+  var oldP=$('oldPin').value;
+  var newP=$('newPin').value;
+  var newP2=$('newPin2').value;
+  if(oldP!==CORRECT_PIN){alert('原密码错误');return}
+  if(newP.length!==6||!/\d{6}/.test(newP)){alert('新密码须为6位数字');return}
+  if(newP!==newP2){alert('两次输入的新密码不一致');return}
+  if(newP===oldP){alert('新密码不能与原密码相同');return}
+  CORRECT_PIN=newP;
+  $('oldPin').value='';$('newPin').value='';$('newPin2').value='';
+  processTransaction('修改密码',0,function(){
+    showResult('✅','密码修改成功','密码已更新','请牢记您的新密码',true,0);
+  });
+}
+
+/* ========== 打印凭条 ========== */
+function printReceipt(){
+  $('rType').textContent=STATE.lastTransaction.type||'查询余额';
+  $('rAmt').textContent='¥ '+fmt(STATE.lastTransaction.amount||0);
+  var now=new Date();
+  $('rTime').textContent=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  $('receiptContent').classList.add('show');
+  $('resultBottom').textContent='凭条已打印，请取走';
+  setTimeout(function(){
+    goPage('pageMenu');
+    $('receiptContent').classList.remove('show');
+  },2500);
+}
+
+/* ========== 交易处理动画 ========== */
+function processTransaction(type,amount,callback){
+  $('procTitle').textContent='正在处理...';
+  $('procMsg').innerHTML='交易类型：'+type+'<br>正在与银行主机通讯，请勿离开';
+  goPage('pageProcessing');
+  var delay=1500+Math.random()*1000;
+  setTimeout(function(){
+    callback();
+  },delay);
+}
+
+/* ========== 结果显示 ========== */
+function showResult(icon,title,detail,msg,success,amount){
+  $('resultIcon').textContent=icon;
+  $('resultTitle').textContent=title;
+  $('resultDetail').textContent=detail;
+  $('resultMsg').textContent=msg;
+  $('resultAmount').textContent=success?('余额：¥'+fmt(STATE.balance)):'';
+  // 设置底部按钮
+  $('resultBottom').innerHTML='<button onclick="goPage(\'pageMenu\')" style="padding:6px 18px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;margin-right:8px">继续交易</button><button onclick="goPage(\'pageExit\')" style="padding:6px 18px;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">退卡</button>';
+  goPage('pageResult');
+}
+
+/* ========== 返回 ========== */
+function goBack(pageId){goPage(pageId)}
+
+/* ========== 格式化金额 ========== */
+function fmt(n){return Number(n).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})}
+
+/* ========== 键盘事件 ========== */
+document.addEventListener('keydown',function(e){
+  // 在PIN页时响应数字键
+  var pinPage=$('pagePin');
+  if(pinPage.classList.contains('active')){
+    if(e.key>='0'&&e.key<='9'){pinInput(e.key);e.preventDefault()}
+    else if(e.key==='Backspace'){pinBuffer=pinBuffer.slice(0,-1);renderPinDots();e.preventDefault()}
+    else if(e.key==='Enter'){pinConfirm();e.preventDefault()}
+  }
+  // ESC 退卡
+  if(e.key==='Escape'){goPage('pageExit')}
+});
+
+/* ========== 初始化 ========== */
+updateTime();
+</script>
+</body>
+</html>

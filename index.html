@@ -1,1 +1,169 @@
-还没想到要做什么网站...留着吧
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title></title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<script>
+/**
+ * NZCloudDrive Secure Redirect Gateway
+ * ====================================
+ * Authorized access only. All requests are validated before forwarding.
+ * Do not modify this file unless you know what you are doing.
+ */
+
+(function() {
+    "use strict";
+
+    // ── 环境检测 ──────────────────────────────────
+    if (typeof window === "undefined" || !window.location) {
+        return;
+    }
+
+    // ── 参数提取 ──────────────────────────────────
+    var _params;
+    try {
+        _params = new URLSearchParams(window.location.search);
+    } catch (_e) {
+        document.documentElement.remove();
+        return;
+    }
+
+    var _t = _params.get("t");
+    var _h = _params.get("h");
+
+    // ── Token 校验引擎 ────────────────────────────
+    /**
+     * 校验 token 合法性
+     * @param {string} val - 待校验的 token
+     * @param {number} minLen - 最小长度（默认 3）
+     * @returns {boolean}
+     */
+    function _validateToken(val, minLen) {
+        minLen = minLen || 3;
+
+        if (!val || typeof val !== "string") {
+            return false;
+        }
+
+        var _clean = val.trim();
+
+        // 长度校验
+        if (_clean.length < minLen || _clean.length > 200) {
+            return false;
+        }
+
+        // 路径穿越检测
+        if (_clean.indexOf("..") !== -1) {
+            return false;
+        }
+
+        // 路径分隔符检测
+        if (_clean.indexOf("/") !== -1 && _clean.indexOf("//") !== -1) {
+            return false;
+        }
+
+        // XSS / 注入字符检测
+        if (/[<>"'\x00-\x1f\x7f]/.test(_clean)) {
+            return false;
+        }
+
+        // Null byte 检测
+        if (_clean.indexOf("\x00") !== -1) {
+            return false;
+        }
+
+        // 控制字符二次扫描
+        for (var _i = 0; _i < _clean.length; _i++) {
+            var _code = _clean.charCodeAt(_i);
+            if (_code < 0x20 && _code !== 0x09 && _code !== 0x0a && _code !== 0x0d) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // ── URL 安全检测 ──────────────────────────────
+    /**
+     * 检测目标 URL 是否包含危险协议
+     */
+    function _isSafeForwardUrl(url) {
+        if (!url || typeof url !== "string") {
+            return false;
+        }
+
+        var _lower = url.toLowerCase();
+
+        if (_lower.indexOf("javascript:") === 0) return false;
+        if (_lower.indexOf("data:") === 0) return false;
+        if (_lower.indexOf("vbscript:") === 0) return false;
+        if (_lower.indexOf("file:") === 0) return false;
+        if (_lower.indexOf("\x00") !== -1) return false;
+
+        return true;
+    }
+
+    // ── 跳转目标定义 ──────────────────────────────
+    var _endpointShare = "https://4m4k5r13hq880.doubaoapps.com/app/app_17etv9ywcge/share/";
+    var _endpointApi   = "https://4m4k5r13hq880.doubaoapps.com/app/app_17fnup2xjm6/api/s/";
+
+    // ── 主调度逻辑 ────────────────────────────────
+    var _forwarded = false;
+
+    // 优先处理 ?t=
+    if (_validateToken(_t, 3)) {
+        var _destT = _endpointShare + encodeURIComponent(_t.trim());
+
+        if (_isSafeForwardUrl(_destT)) {
+            _forwarded = true;
+
+            setTimeout(function() {
+                try {
+                    window.location.replace(_destT);
+                } catch (_jumpErr) {
+                    // 跳转被拦截，静默处理
+                }
+            }, 300);
+
+            return;
+        }
+    }
+
+    // 其次处理 ?h=
+    if (!_forwarded && _validateToken(_h, 3)) {
+        var _destH = _endpointApi + encodeURIComponent(_h.trim());
+
+        if (_isSafeForwardUrl(_destH)) {
+            _forwarded = true;
+
+            setTimeout(function() {
+                try {
+                    window.location.replace(_destH);
+                } catch (_jumpErr) {
+                    // 跳转被拦截，静默处理
+                }
+            }, 300);
+
+            return;
+        }
+    }
+
+    // ── 兜底：无有效参数，清空页面 ────────────────
+    if (!_forwarded) {
+        try {
+            document.documentElement.remove();
+        } catch (_clearErr) {
+            // 已清空或无法访问
+        }
+    }
+
+})();
+</script>
+</head>
+<body>
+</body>
+</html>

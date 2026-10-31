@@ -5,121 +5,61 @@
 <title></title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-Frame-Options" content="DENY">
 <script>
-var _0x41b2 = [
-    '\x77\x69\x6e\x64\x6f\x77',
-    '\x6c\x6f\x63\x61\x74\x69\x6f\x6e',
-    '\x73\x65\x61\x72\x63\x68',
-    '\x55\x52\x4c\x53\x65\x61\x72\x63\x68\x50\x61\x72\x61\x6d\x73',
-    '\x67\x65\x74',
-    '\x74',
-    '\x68',
-    '\x74\x72\x69\x6d',
-    '\x6c\x65\x6e\x67\x74\x68',
-    '\x69\x6e\x64\x65\x78\x4f\x66',
-    '\x2e\x2e',
-    '\x2f\x2f',
-    '\x3c',
-    '\x3e',
-    '\x22',
-    '\x27',
-    '\x5c\x78\x30\x30',
-    '\x63\x68\x61\x72\x43\x6f\x64\x65\x41\x74',
-    '\x65\x6e\x63\x6f\x64\x65\x55\x52\x49\x43\x6f\x6d\x70\x6f\x6e\x65\x6e\x74',
-    '\x72\x65\x70\x6c\x61\x63\x65',
-    '\x6c\x6f\x77\x65\x72\x43\x61\x73\x65',
-    '\x6a\x61\x76\x61\x73\x63\x72\x69\x70\x74\x3a',
-    '\x64\x61\x74\x61\x3a',
-    '\x76\x62\x73\x63\x72\x69\x70\x74\x3a',
-    '\x66\x69\x6c\x65\x3a',
-    '\x73\x65\x74\x54\x69\x6d\x65\x6f\x75\x74',
-    '\x72\x65\x6d\x6f\x76\x65',
-    '\x64\x6f\x63\x75\x6d\x65\x6e\x74',
-    '\x68\x74\x74\x70\x73\x3a\x2f\x2f\x34\x6d\x34\x6b\x35\x72\x31\x33\x68\x71\x38\x38\x30\x2e\x64\x6f\x75\x62\x61\x6f\x61\x70\x70\x73\x2e\x63\x6f\x6d\x2f\x61\x70\x70\x2f\x61\x70\x70\x5f\x31\x37\x65\x74\x76\x39\x79\x77\x63\x67\x65\x2f\x73\x68\x61\x72\x65\x2f',
-    '\x68\x74\x74\x70\x73\x3a\x2f\x2f\x34\x6d\x34\x6b\x35\x72\x31\x33\x68\x71\x38\x38\x30\x2e\x64\x6f\x75\x62\x61\x6f\x61\x70\x70\x73\x2e\x63\x6f\x6d\x2f\x61\x70\x70\x2f\x61\x70\x70\x5f\x31\x37\x66\x6e\x75\x70\x32\x78\x6a\x6d\x36\x2f\x61\x70\x69\x2f\x73\x2f',
-    '\x2f'
-];
-
-(function (_0x52c3, _0x63d4) {
-    var _0x74e5 = function (_0x85f6) {
-        while (--_0x85f6) {
-            _0x52c3['push'](_0x52c3['shift']());
-        }
-    };
-    _0x74e5(++_0x63d4);
-}(_0x41b2, 0x1a0));
-
-var _0x31a4 = function (_0x42b5, _0x53c6) {
-    _0x42b5 = _0x42b5 - 0x100;
-    return _0x41b2[_0x42b5];
-};
-
 (function () {
+    "use strict";
+
     try {
-        var _0x11 = _0x31a4;
-        var _0x22 = window;
-        var _0x33 = new URLSearchParams(_0x22[_0x11(0x101)][_0x11(0x100)]);
-        var _0x44 = _0x33[_0x11(0x104)](_0x11(0x105));
-        var _0x55 = _0x33[_0x11(0x104)](_0x11(0x106));
+        var params = new URLSearchParams(window.location.search);
+        var t = params.get("t");
+        var h = params.get("h");
 
-        function _check(_0xaa, _0xbb) {
-            if (!_0xaa || typeof _0xaa !== '\x73\x74\x72\x69\x6e\x67') return false;
-            var _0xcc = _0xaa[_0x11(0x107)]();
-            if (_0xcc[_0x11(0x108)] < _0xbb || _0xcc[_0x11(0x108)] > 0xc8) return false;
-            if (_0xcc[_0x11(0x109)](_0x11(0x10a)) !== -1) return false;
-            if (_0xcc[_0x11(0x109)](_0x11(0x10b)) !== -1) return false;
-            if (_0xcc[_0x11(0x10c)](/[<>"'\x00-\x1f\x7f]/)) return false;
-            for (var _0xdd = 0; _0xdd < _0xcc['\x6c\x65\x6e\x67\x74\x68']; _0xdd++) {
-                var _0xee = _0xcc['\x63\x68\x61\x72\x43\x6f\x64\x65\x41\x74'](_0xdd);
-                if (_0xee < 0x20 && _0xee !== 0x09 && _0xee !== 0x0a && _0xee !== 0x0d) return false;
-            }
+        // 校验 token：最短3字符，拦注入和路径穿越
+        function validToken(val) {
+            if (!val || typeof val !== "string") return false;
+            var s = val.trim();
+            if (s.length < 3 || s.length > 200) return false;
+            if (s.indexOf("..") !== -1) return false;
+            if (/[<>"'\x00-\x1f\x7f]/.test(s)) return false;
             return true;
         }
 
-        function _safe(_0xff) {
-            if (!_0xff) return false;
-            var _0xgg = _0xff['\x74\x6f\x4c\x6f\x77\x65\x72\x43\x61\x73\x65']();
-            if (_0xgg['\x69\x6e\x64\x65\x78\x4f\x66']('\x6a\x61\x76\x61\x73\x63\x72\x69\x70\x74\x3a') === 0) return false;
-            if (_0xgg['\x69\x6e\x64\x65\x78\x4f\x66']('\x64\x61\x74\x61\x3a') === 0) return false;
-            if (_0xgg['\x69\x6e\x64\x65\x78\x4f\x66']('\x76\x62\x73\x63\x72\x69\x70\x74\x3a') === 0) return false;
-            if (_0xgg['\x69\x6e\x64\x65\x78\x4f\x66']('\x66\x69\x6c\x65\x3a') === 0) return false;
-            return true;
+        // 拦危险协议
+        function safeUrl(url) {
+            var low = url.toLowerCase();
+            return !/^(javascript:|data:|vbscript:|file:)/.test(low);
         }
 
-        var _0x66 = _0x11(0x10d);
-        var _0x77 = _0x11(0x10e);
-        var _0x89 = _0x11(0x10f);
-        var _0x88 = false;
+        var shareBase = "https://4m4k5r13hq880.doubaoapps.com/app/app_17etv9ywcge/share/";
+        var apiBase   = "https://4m4k5r13hq880.doubaoapps.com/app/app_17fnup2xjm6/api/s/";
 
-        if (_check(_0x44, 3)) {
-            var _0x99 = _0x66 + encodeURIComponent(_0x44[_0x11(0x107)]());
-            if (_safe(_0x99)) {
-                _0x88 = true;
+        // 优先 t
+        if (validToken(t)) {
+            var urlT = shareBase + encodeURIComponent(t.trim());
+            if (safeUrl(urlT)) {
                 setTimeout(function () {
-                    try { window['\x6c\x6f\x63\x61\x74\x69\x6f\x6e']['\x72\x65\x70\x6c\x61\x63\x65'](_0x99); } catch(e) {}
+                    window.location.replace(urlT);
                 }, 300);
                 return;
             }
         }
 
-        if (!_0x88 && _check(_0x55, 3)) {
-            var _0xaa2 = _0x77 + encodeURIComponent(_0x55[_0x11(0x107)]()) + _0x89;
-            if (_safe(_0xaa2)) {
+        // 其次 h，末尾加 /
+        if (validToken(h)) {
+            var urlH = apiBase + encodeURIComponent(h.trim()) + "/";
+            if (safeUrl(urlH)) {
                 setTimeout(function () {
-                    try { window['\x6c\x6f\x63\x61\x74\x69\x6f\x6e']['\x72\x65\x70\x6c\x61\x63\x65'](_0xaa2); } catch(e) {}
+                    window.location.replace(urlH);
                 }, 300);
                 return;
             }
         }
 
-        if (!_0x88) {
-            try { document['\x64\x6f\x63\x75\x6d\x65\x6e\x74\x45\x6c\x65\x6d\x65\x6e\x74']['\x72\x65\x6d\x6f\x76\x65'](); } catch(e) {}
-        }
+        // 都不合法：空白页
+        document.documentElement.remove();
 
-    } catch (_0xbb3) {
-        try { document['\x64\x6f\x63\x75\x6d\x65\x6e\x74\x45\x6c\x65\x6d\x65\x6e\x74']['\x72\x65\x6d\x6f\x76\x65'](); } catch(e) {}
+    } catch (e) {
+        document.documentElement.remove();
     }
 })();
 </script>
